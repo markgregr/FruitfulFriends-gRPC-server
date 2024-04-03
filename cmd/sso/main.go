@@ -4,7 +4,6 @@ import (
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/app"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/config"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/logger/handlers/logruspretty"
-	"github.com/natefinch/lumberjack"
 	"github.com/sirupsen/logrus"
 	"log/slog"
 	"os"
@@ -42,38 +41,35 @@ func main() {
 
 func setupLogger(env string) *logrus.Entry {
 	var log = logrus.New()
-	// Создаем новый обработчик для записи в файл
-	fileHandler := &lumberjack.Logger{
-		Filename:   "logs/logger.log",
-		MaxSize:    10,   // Максимальный размер файла в мегабайтах
-		MaxBackups: 3,    // Максимальное количество ротированных файлов
-		MaxAge:     7,    // Максимальный возраст ротированных файлов в днях
-		Compress:   true, // Сжатие ротированных файлов
+	logFilePath := "logs/logger.log"
+
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		panic(err)
 	}
 
 	switch env {
 	case envLocal:
 		return setupPrettySlog(log)
 	case envDev:
-		log.SetOutput(fileHandler)
+		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
 			ForceColors: true,
 		})
 
 	case envProd:
-		log.SetOutput(fileHandler)
+		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
 			ForceColors: true,
 		})
 		log.SetLevel(logrus.WarnLevel)
 	default:
-		log.SetOutput(fileHandler)
+		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
 			ForceColors: true,
 		})
 		log.SetLevel(logrus.DebugLevel)
 	}
-	log.SetOutput(os.Stdout)
 
 	return logrus.NewEntry(log)
 }
