@@ -1,2 +1,4 @@
 docker-compose.yaml
 config/local.yaml
+filebeat/filebeat.yml
+.vscode
