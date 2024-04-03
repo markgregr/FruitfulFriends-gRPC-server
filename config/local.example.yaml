@@ -5,6 +5,7 @@ postgres:
   postgres_migrations_path: "./migrations"
 jwt:
   token_ttl: 1h
+  token_key: "api_token"
 grpc:
   port: 44044
   timeout: 10h

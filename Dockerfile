@@ -9,4 +9,4 @@ RUN go install -v ./...
 
 RUN go build -o app ./cmd/sso/main.go
 
-CMD ["./app", "--config=./config/local.yaml"]
+ENTRYPOINT ["./app", "--config=/app/config/local.yaml"]

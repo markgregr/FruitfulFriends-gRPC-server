@@ -12,9 +12,6 @@ type Config struct {
 	Postgres      PostgresConfig      `yaml: "postgres"`
 	JWT           JWTConfig           `yaml: "jwt"`
 	Redis         RedisConfig         `yaml: "redis"`
-	Logstash      LogstashConfig      `yaml: "logstash"`
-	ElasticSearch ElasticSearchConfig `yaml: "elasticsearch"`
-	Kibana        KibanaConfig        `yaml: "kibana"`
 }
 
 func MustLoad() *Config {
