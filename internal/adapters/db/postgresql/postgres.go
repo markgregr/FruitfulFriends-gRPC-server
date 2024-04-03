@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/config"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
-	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/logger/sl"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log/slog"
 )
 
 type Postgres struct {
@@ -16,7 +15,7 @@ type Postgres struct {
 }
 
 // New создает новый экземпляр Postgres
-func New(log *slog.Logger, cfg *config.PostgresConfig) (*Postgres, error) {
+func New(log *logrus.Logger, cfg *config.PostgresConfig) (*Postgres, error) {
 	const op = "Postgres.New"
 
 	l := logger.Default
@@ -24,7 +23,7 @@ func New(log *slog.Logger, cfg *config.PostgresConfig) (*Postgres, error) {
 	//	l = l.LogMode(logger.Info)
 	//}
 
-	log.With(slog.String("op", op)).Info("execute database connection")
+	log.WithField("op", op).Info("execute database connection")
 
 	db, err := gorm.Open(postgres.Open(cfg.URL), &gorm.Config{Logger: l})
 	if err != nil {
@@ -43,17 +42,46 @@ func New(log *slog.Logger, cfg *config.PostgresConfig) (*Postgres, error) {
 	}, nil
 }
 
-func Migrate(log *slog.Logger, db *gorm.DB) error {
+// Migrate выполняет миграции базы данных
+func Migrate(log *logrus.Logger, db *gorm.DB) error {
 	const op = "Postgres.Migrate"
 
 	log.Info("execute database migrations")
 
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		log.Error("failed to migrate user model", sl.Err(err))
+	if err := db.AutoMigrate(&models.User{}, &models.App{}); err != nil {
+		log.WithError(err).Error("failed to migrate user model")
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.Info("user model migrated")
+
+	return nil
+}
+
+// TestMigrate выполняет миграции базы данных
+func TestMigrate(log *logrus.Logger, db *gorm.DB) error {
+	const op = "Postgres.TestMigrate"
+
+	log.Info("execute database migrations")
+
+	if err := db.AutoMigrate(&models.User{}, &models.App{}); err != nil {
+		log.WithError(err).Error("failed to migrate user model")
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("models migrated")
+
+	app := models.App{
+		ID:     1,
+		Name:   "test",
+		Secret: "test-secret",
+	}
+	if err := db.Create(&app).Error; err != nil {
+		log.WithError(err).Error("failed to insert app data")
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("data inserted successfully")
 
 	return nil
 }

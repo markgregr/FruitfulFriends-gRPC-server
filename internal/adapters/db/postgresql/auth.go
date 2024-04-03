@@ -30,10 +30,15 @@ func (p *Postgres) SaveUser(ctx context.Context, email string, passHash []byte) 
 	var user = &models.User{
 		Email:    email,
 		PassHash: passHash,
+		Role:     RoleUser,
 		Status:   StatusActive,
 	}
 
 	if err := p.db.WithContext(ctx).Create(user).Error; err != nil {
+		if errors.Is(err, gorm.ErrInvalidData) {
+			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
+		}
+
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
 		}
@@ -46,7 +51,7 @@ func (p *Postgres) SaveUser(ctx context.Context, email string, passHash []byte) 
 	return userID, nil
 }
 
-func (p *Postgres) User(ctx context.Context, email string) (models.User, error) {
+func (p *Postgres) UserByEmail(ctx context.Context, email string) (models.User, error) {
 	const op = "postgresql.Postgres.User"
 
 	var user models.User
@@ -105,20 +110,33 @@ func (p *Postgres) App(ctx context.Context, appID int) (models.App, error) {
 func (p *Postgres) DeleteUser(ctx context.Context, userID int64) error {
 	const op = "postgresql.Postgres.DeleteUser"
 
-	var user models.User
+	tx := p.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return fmt.Errorf("%s: %w", op, tx.Error)
+	}
 
-	if err := p.db.WithContext(ctx).First(&user, userID).Error; err != nil {
+	var user models.User
+	if err := tx.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
+			tx.Rollback()
+
 			return fmt.Errorf("%s: %w", op, ErrUserNotFound)
 		}
+
+		tx.Rollback()
 
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	user.Status = StatusDeleted
+	if err := tx.Save(&user).Error; err != nil {
+		tx.Rollback()
 
-	if err := p.db.WithContext(ctx).Save(&user).Error; err != nil {
 		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	if tx := tx.Commit(); tx.Error != nil {
+		return fmt.Errorf("%s: %w", op, tx.Error)
 	}
 
 	return nil

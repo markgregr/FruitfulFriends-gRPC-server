@@ -1,0 +1,23 @@
+name: "gRPC-server-filebeat"
+logging.metrics.enbled: false
+xpack.security.enabled: false
+xpack.moniroting.enabled: false
+setup.ilm.enabled: false
+setup.template.enabled: false
+
+filebeat.inputs:
+  - type: log
+    scan_frequency: 1s
+    enabled: true
+    paths:
+      - "src/logs/*.log"
+    fields:
+      - service: gRPC-server
+    fields_under_root: true
+    json:
+      keys_under_root: true
+      overwrite_keys: true
+      message_key: 'message'
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  index: "gRPC-server"

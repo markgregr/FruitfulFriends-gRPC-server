@@ -1,3 +1,9 @@
+version: '3'
+
+
+volumes:
+  elasticsearch_data:
+
 services:
   postgres:
     image: postgres:latest
@@ -7,6 +13,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: fruitfulfriends
+
   adminer:
     image: adminer:latest
     ports:
@@ -14,3 +21,58 @@ services:
     depends_on:
       - postgres
 
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --save 20 1 --loglevel warning --requirepass besthack
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+
+  filebeat:
+    build:
+      context: ./filebeat
+    container_name: filebeat
+    command: filebeat -e strict.perms=false
+    volumes:
+      - ./logs:/src/logs
+    depends_on:
+      #      - elasticsearch
+      - kibana # Добавлено для зависимости от Logstash
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.0
+    container_name: logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf # Добавлен этот volume
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    restart: always
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  grpc-server:
+    build:
+      context: ./
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - postgres
+      - redis

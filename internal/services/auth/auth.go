@@ -5,28 +5,35 @@ import (
 	"errors"
 	"fmt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/adapters/db/postgresql"
+	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/adapters/db/redis"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/jwt"
-	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/logger/sl"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
-	"log/slog"
 	"time"
 )
 
-type Auth struct {
-	log          *slog.Logger
-	userSaver    UserSaver
-	userProvider UserProvider
-	appProvider  AppProvider
-	tokenTTl     time.Duration
+type AuthService struct {
+	log           *logrus.Logger
+	userSaver     UserSaver
+	authUserSaver AuthenticatedUserSaver
+	userProvider  UserProvider
+	appProvider   AppProvider
+	tokenTTl      time.Duration
 }
 
 type UserSaver interface {
 	SaveUser(ctx context.Context, email string, passHash []byte) (uid int64, err error)
 }
 
+type AuthenticatedUserSaver interface {
+	SaveAuthenticatedUser(ctx context.Context, userID int64, token string) error
+	UserIDByToken(ctx context.Context, token string) (int64, error)
+	DeleteAuthenticatedUser(ctx context.Context, token string) error
+}
+
 type UserProvider interface {
-	User(ctx context.Context, email string) (models.User, error)
+	UserByEmail(ctx context.Context, email string) (models.User, error)
 	IsAdmin(ctx context.Context, userID int64) (bool, error)
 }
 
@@ -41,57 +48,61 @@ var (
 )
 
 // New создает новый экземпляр сервиса авторизации
-func New(log *slog.Logger, userSaver UserSaver, userProvider UserProvider, appProvider AppProvider, tokenTTl time.Duration) *Auth {
-	return &Auth{
-		log:          log,
-		userSaver:    userSaver,
-		userProvider: userProvider,
-		appProvider:  appProvider,
-		tokenTTl:     tokenTTl,
+func New(log *logrus.Logger, userSaver UserSaver, authUserSaver AuthenticatedUserSaver, userProvider UserProvider, appProvider AppProvider, tokenTTl time.Duration) *AuthService {
+	return &AuthService{
+		log:           log,
+		userSaver:     userSaver,
+		authUserSaver: authUserSaver,
+		userProvider:  userProvider,
+		appProvider:   appProvider,
+		tokenTTl:      tokenTTl,
 	}
 }
 
 // Login выполняет аутентификацию пользователя
-func (a *Auth) Login(ctx context.Context, email, password string, appID int) (token string, err error) {
+func (s *AuthService) Login(ctx context.Context, email, password string, appID int) (token string, err error) {
 	const op = "auth.Auth.Login"
-	log := a.log.With(
-		slog.String("op", op),
-		slog.String("email", email))
+	log := s.log.WithField("op", op).WithField("email", email)
 
 	log.Info("login user")
 
-	user, err := a.userProvider.User(ctx, email)
+	user, err := s.userProvider.UserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, postgresql.ErrUserNotFound) {
-			log.Warn("user not found", sl.Err(err))
+			log.Warn("user not found", err)
 			return "", fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
 		}
 
-		log.Error("failed to get user", sl.Err(err))
+		log.WithError(err).Error("failed to get user")
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PassHash, []byte(password)); err != nil {
-		log.Warn("invalid password", sl.Err(err))
+		log.Warn("invalid password", err)
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
-	app, err := a.appProvider.App(ctx, appID)
+	app, err := s.appProvider.App(ctx, appID)
 	if err != nil {
 		if errors.Is(err, postgresql.ErrAppNotFound) {
-			log.Warn("app not found", sl.Err(err))
+			log.Warn("app not found", err)
 			return "", fmt.Errorf("%s: %w", op, ErrInvalidAppID)
 		}
 
-		log.Error("failed to get app", sl.Err(err))
+		log.WithError(err).Error("failed to get app")
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	log.Info("user logged in successfully")
 
-	token, err = jwt.NewToken(user, app, a.tokenTTl)
+	token, err = jwt.NewToken(user, app, s.tokenTTl)
 	if err != nil {
-		log.Error("failed to create token", sl.Err(err))
+		log.WithError(err).Error("failed to create token")
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	if err := s.authUserSaver.SaveAuthenticatedUser(ctx, user.ID, token); err != nil {
+		log.WithError(err).Error("failed to save authenticated user")
 		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -99,30 +110,26 @@ func (a *Auth) Login(ctx context.Context, email, password string, appID int) (to
 }
 
 // RegisterNewUser регистрирует нового пользователя
-func (a *Auth) RegisterNewUser(ctx context.Context, email, password string) (userID int64, err error) {
+func (s *AuthService) RegisterNewUser(ctx context.Context, email, password string) (userID int64, err error) {
 	op := "auth.Auth.RegisterNewUser"
-
-	log := a.log.With(
-		slog.String("op", op),
-		slog.String("email", email),
-	)
+	log := s.log.WithField("op", op).WithField("email", email)
 
 	log.Info("registering new user")
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Error("failed to hash password", sl.Err(err))
+		log.WithError(err).Error("failed to hash password")
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	userID, err = a.userSaver.SaveUser(ctx, email, passHash)
+	userID, err = s.userSaver.SaveUser(ctx, email, passHash)
 	if err != nil {
 		if errors.Is(err, postgresql.ErrUserExists) {
-			log.Warn("user already exists", sl.Err(err))
+			log.Warn("user already exists", err)
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExist)
 		}
 
-		log.Error("failed to save user", sl.Err(err))
+		log.WithError(err).Error("failed to save user")
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
@@ -130,26 +137,59 @@ func (a *Auth) RegisterNewUser(ctx context.Context, email, password string) (use
 }
 
 // IsAdmin проверяет, является ли пользователь администратором
-func (a *Auth) IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error) {
+func (s *AuthService) IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error) {
 	const op = "auth.Auth.IsAdmin"
 
-	log := a.log.With(
-		slog.String("op", op),
-		slog.Int64("userID", userID),
-	)
+	log := s.log.WithField("op", op).WithField("email", userID)
 
 	log.Info("checking if user is admin")
 
-	isAdmin, err = a.userProvider.IsAdmin(ctx, userID)
+	isAdmin, err = s.userProvider.IsAdmin(ctx, userID)
 	if err != nil {
 		if errors.Is(err, postgresql.ErrAppNotFound) {
-			log.Warn("user not found", sl.Err(err))
+			log.Warn("user not found", err)
 			return false, fmt.Errorf("%s: %w", op, ErrInvalidAppID)
 		}
 
-		log.Error("failed to check if user is admin", sl.Err(err))
+		log.WithError(err).Error("failed to check if user is admin")
 		return false, fmt.Errorf("%s: %w", op, err)
 	}
 
 	return isAdmin, nil
+}
+
+// AuthByToken выполняет аутентификацию пользователя по токену
+func (s *AuthService) AuthByToken(ctx context.Context, token string) (userID int64, err error) {
+	const op = "auth.Auth.AuthByToken"
+	log := s.log.WithField("op", op).WithField("token", token)
+
+	log.Info("auth by token")
+
+	userID, err = s.authUserSaver.UserIDByToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, redis.ErrTokenNotFound) {
+			log.Warn("token not found", err)
+			return 0, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		}
+
+		log.WithError(err).Error("failed to get user by token")
+		return 0, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return userID, nil
+}
+
+// Logout выполняет выход пользователя
+func (s *AuthService) Logout(ctx context.Context, token string) error {
+	const op = "auth.Auth.Logout"
+	log := s.log.WithField("op", op).WithField("token", token)
+
+	log.Info("logout")
+
+	if err := s.authUserSaver.DeleteAuthenticatedUser(ctx, token); err != nil {
+		log.WithError(err).Error("failed to delete authenticated user")
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
 }
