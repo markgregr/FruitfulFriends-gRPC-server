@@ -3,7 +3,9 @@ package main
 import (
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/adapters/db/postgresql"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/config"
-	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/logger/handlers/slogpretty"
+	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/logger/handlers/logruspretty"
+	"github.com/natefinch/lumberjack"
+	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"log/slog"
@@ -30,34 +32,51 @@ func main() {
 		panic(err)
 	}
 
-	if err = postgresql.TestMigrate(log, db); err != nil {
+	if err = postgresql.TestMigrate(log.Logger, db); err != nil {
 		panic(err)
 	}
 }
 
-func setupLogger(env string) *slog.Logger {
-	var log *slog.Logger
+func setupLogger(env string) *logrus.Entry {
+	var log = logrus.New()
+	// Создаем новый обработчик для записи в файл
+	fileHandler := &lumberjack.Logger{
+		Filename:   "logs/logger.log",
+		MaxSize:    10,   // Максимальный размер файла в мегабайтах
+		MaxBackups: 3,    // Максимальное количество ротированных файлов
+		MaxAge:     7,    // Максимальный возраст ротированных файлов в днях
+		Compress:   true, // Сжатие ротированных файлов
+	}
 
 	switch env {
 	case envLocal:
-		log = setupPrettySlog()
+		return setupPrettySlog(log)
 	case envDev:
-		log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+		log.SetOutput(fileHandler)
+		log.SetFormatter(&logrus.TextFormatter{
+			ForceColors: true,
+		})
+
 	case envProd:
-		log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelWarn}))
+		log.SetOutput(fileHandler)
+		log.SetFormatter(&logrus.TextFormatter{
+			ForceColors: true,
+		})
+		log.SetLevel(logrus.WarnLevel)
 	default:
-		log = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		log.SetOutput(fileHandler)
+		log.SetFormatter(&logrus.TextFormatter{
+			ForceColors: true,
+		})
+		log.SetLevel(logrus.DebugLevel)
 	}
-	return log
+	log.SetOutput(os.Stdout)
+
+	return logrus.NewEntry(log)
 }
 
-func setupPrettySlog() *slog.Logger {
-	opts := slogpretty.PrettyHandlerOptions{
-		SlogOpts: &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		},
-	}
-	handler := opts.NewPrettyHandler(os.Stdout)
-
-	return slog.New(handler)
+func setupPrettySlog(log *logrus.Logger) *logrus.Entry {
+	prettyHandler := logruspretty.NewPrettyHandler(os.Stdout)
+	log.SetFormatter(prettyHandler)
+	return logrus.NewEntry(log)
 }
