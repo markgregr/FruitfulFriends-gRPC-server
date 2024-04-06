@@ -1,67 +1,30 @@
 package config
 
 import (
-	"flag"
-	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/caarlos0/env/v6"
+	"github.com/joho/godotenv"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 
 type Config struct {
-	Env           string              `yaml:"env" env-default:"local"`
-	GRPC          GRPCConfig          `yaml: "grpc"`
-	Postgres      PostgresConfig      `yaml: "postgres"`
-	JWT           JWTConfig           `yaml: "jwt"`
-	Redis         RedisConfig         `yaml: "redis"`
+	Env      string `env:"GRPC_SERVER_ENV" env-default:"local"`
+	GRPC     GRPCConfig
+	Postgres PostgresConfig
+	JWT      JWTConfig
+	Redis    RedisConfig
 }
 
 func MustLoad() *Config {
-	configPath := fetchConfigPath()
-	if configPath == "" {
-		panic("config path is empty")
-	}
-
-	return MustLoadByPath(configPath)
-}
-
-func MustLoadByPath(configPath string) *Config {
-	// check if file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		panic("config file does not exist: " + configPath)
-	}
-
 	var cfg Config
-
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		panic("cannot read config: " + err.Error())
+	if _, err := os.Stat(".env"); err == nil {
+		if err := godotenv.Load(); err != nil {
+			log.Fatalf("unable to load .env file: %v", err)
+		}
 	}
 
+	if err := env.Parse(&cfg); err != nil {
+		log.Fatalf("error parsing environment variables: %v", err)
+	}
 	return &cfg
-}
-
-func MustLoadPath(configPath string) *Config {
-	// check if file exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		panic("config file does not exist: " + configPath)
-	}
-
-	var cfg Config
-
-	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
-		panic("cannot read config: " + err.Error())
-	}
-
-	return &cfg
-}
-
-func fetchConfigPath() string {
-	var res string
-
-	//	--config="path/to/config.yaml
-	flag.StringVar(&res, "config", "", "path to config file")
-	flag.Parse()
-
-	if res == "" {
-		res = os.Getenv("CONFIG_PATH")
-	}
-	return res
 }

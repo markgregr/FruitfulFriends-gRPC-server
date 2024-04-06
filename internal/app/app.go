@@ -29,7 +29,7 @@ func New(log *logrus.Entry, cfg *config.Config) *App {
 
 	authMd := gmiddleware.NewAuthInterceptor(cfg.JWT.TokenKey, authService)
 
-	grpcApp := grpcapp.New(log, authService, authMd, cfg.GRPC.Port)
+	grpcApp := grpcapp.New(log, authService, authMd, cfg.GRPC.Port, cfg.GRPC.Host)
 
 	return &App{
 		GRPCSrv: grpcApp,

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	apiTokenKey = "api_token"
+	apiTokenKey = "secret"
 )
 
 var (

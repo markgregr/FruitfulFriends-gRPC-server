@@ -5,6 +5,7 @@ go 1.22.1
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/brianvoe/gofakeit v3.18.0+incompatible // indirect
+	github.com/caarlos0/env/v6 v6.10.1 // indirect
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/go-redis/redis v6.15.9+incompatible // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect

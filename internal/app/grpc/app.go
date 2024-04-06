@@ -17,10 +17,11 @@ import (
 type App struct {
 	log        *logrus.Entry
 	gRPCServer *grpc.Server
+	host       string
 	port       int
 }
 
-func New(log *logrus.Entry, authService authgrpc.AuthService, authMd *gmiddleware.Auth, port int) *App { // Создаем экземпляр PrettyHandler для вывода красивых логов
+func New(log *logrus.Entry, authService authgrpc.AuthService, authMd *gmiddleware.Auth, port int, host string) *App { // Создаем экземпляр PrettyHandler для вывода красивых логов
 	prettyHandler := logruspretty.NewPrettyHandler(os.Stdout)
 	logrus.SetFormatter(prettyHandler)
 	logEntry := logrus.NewEntry(logrus.StandardLogger())
@@ -36,6 +37,7 @@ func New(log *logrus.Entry, authService authgrpc.AuthService, authMd *gmiddlewar
 		log:        log,
 		gRPCServer: gRPCServer,
 		port:       port,
+		host:       host,
 	}
 }
 
@@ -48,9 +50,9 @@ func (a *App) MustRun() {
 func (a *App) Run() error {
 	const op = "app/grpc.Run"
 
-	log := a.log.Logger.WithField("op", op).WithField("port", a.port)
+	log := a.log.Logger.WithField("op", op).WithField("host", a.host).WithField("port", a.port)
 
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
+	l, err := net.Listen("tcp", fmt.Sprintf("%s:%d", a.host, a.port))
 	if err != nil {
 		log.WithError(err).Error("Failed to listen")
 		return err
