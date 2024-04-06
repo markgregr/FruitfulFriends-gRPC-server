@@ -1,12 +1,11 @@
-FROM golang:1.22.1
+FROM golang:1.22.1-alpine
 
 RUN mkdir /app
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
-
-RUN go get -d -v ./...
-RUN go install -v ./...
 
 RUN go build -o app ./cmd/sso/main.go
 
-ENTRYPOINT ["./app", "--config=/app/config/local.yaml"]
+ENTRYPOINT ["./app"]
