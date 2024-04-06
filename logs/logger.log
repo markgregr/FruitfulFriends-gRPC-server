@@ -12,3 +12,23 @@
 [36mINFO[0m[0416] Aplication stoppingsignal=interrupt          
 [36mINFO[0m[0416] Stopping gRPC server                          [36mop[0m=app/grpc.Stop
 [36mINFO[0m[0416] Application stopped!                         
+[36mINFO[0m[0000] Application start!                            [36mconfig[0m="&{dev {localhost 44044 10h0m0s} {postgresql://postgres:postgres@localhost:5432/fruitfulfriends?sslmode=disable true} {1h0m0s secret} {localhost:6379 besthack}}"
+[36mINFO[0m[0000] execute database connection                   [36mop[0m=Postgres.New
+[36mINFO[0m[0000] execute database migrations                  
+[36mINFO[0m[0000] execute database migrations                  
+[36mINFO[0m[0001] user model migrated                          
+[36mINFO[0m[0001] execute redis connection                      [36mop[0m=Redis.New
+[36mINFO[0m[0001] gRPC server is runningaddress=127.0.0.1:44044  [36mhost[0m=localhost [36mop[0m=app/grpc.Run [36mport[0m=44044
+[36mINFO[0m[0557] Aplication stoppingsignal=interrupt          
+[36mINFO[0m[0557] Stopping gRPC server                          [36mop[0m=app/grpc.Stop
+[36mINFO[0m[0557] Application stopped!                         
+[36mINFO[0m[0000] Application start!                            [36mconfig[0m="&{dev {localhost 44044 10h0m0s} {postgresql://postgres:postgres@localhost:5432/fruitfulfriends?sslmode=disable true} {1h0m0s secret} {localhost:6379 besthack}}"
+[36mINFO[0m[0000] execute database connection                   [36mop[0m=Postgres.New
+[36mINFO[0m[0000] execute database migrations                  
+[36mINFO[0m[0000] execute database migrations                  
+[36mINFO[0m[0001] user model migrated                          
+[36mINFO[0m[0001] execute redis connection                      [36mop[0m=Redis.New
+[36mINFO[0m[0001] gRPC server is runningaddress=127.0.0.1:44044  [36mhost[0m=localhost [36mop[0m=app/grpc.Run [36mport[0m=44044
+[36mINFO[0m[0338] Aplication stoppingsignal=interrupt          
+[36mINFO[0m[0338] Stopping gRPC server                          [36mop[0m=app/grpc.Stop
+[36mINFO[0m[0338] Application stopped!                         
