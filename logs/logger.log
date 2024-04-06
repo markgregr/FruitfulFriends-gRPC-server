@@ -1,0 +1,14 @@
+[36mINFO[0m[0000] Application start!                            [36mconfig[0m="&{dev {44044 10h0m0s} {postgresql://postgres:postgres@postgres:5432/fruitfulfriends?sslmode=disable true ./migrations} {1h0m0s api_token} {localhost:6379 besthack}}"
+[36mINFO[0m[0000] execute database connection                   [36mop[0m=Postgres.New
+[36mINFO[0m[0000] Application start!                            [36mconfig[0m="&{dev {44044 10h0m0s} {postgresql://postgres:postgres@localhost:5432/fruitfulfriends?sslmode=disable true ./migrations} {1h0m0s api_token} {localhost:6379 besthack}}"
+[36mINFO[0m[0000] execute database connection                   [36mop[0m=Postgres.New
+[36mINFO[0m[0000] Application start!                            [36mconfig[0m="&{dev {44044 10h0m0s} {postgresql://postgres:postgres@localhost:5432/fruitfulfriends?sslmode=disable true ./migrations} {1h0m0s api_token} {localhost:6379 besthack}}"
+[36mINFO[0m[0000] execute database connection                   [36mop[0m=Postgres.New
+[36mINFO[0m[0046] execute database migrations                  
+[36mINFO[0m[0046] execute database migrations                  
+[36mINFO[0m[0048] user model migrated                          
+[36mINFO[0m[0048] execute redis connection                      [36mop[0m=Redis.New
+[36mINFO[0m[0048] gRPC server is runningaddress=[::]:44044      [36mop[0m=app/grpc.Run [36mport[0m=44044
+[36mINFO[0m[0416] Aplication stoppingsignal=interrupt          
+[36mINFO[0m[0416] Stopping gRPC server                          [36mop[0m=app/grpc.Stop
+[36mINFO[0m[0416] Application stopped!                         

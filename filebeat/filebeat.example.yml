@@ -18,7 +18,7 @@ filebeat.inputs:
       keys_under_root: true
       overwrite_keys: true
       message_key: 'message'
-      
+
 output.elasticsearch:
   hosts: ["elasticsearch:9200"]
   index: "grpc-server"
