@@ -54,19 +54,21 @@ func setupLogger(env string) *logrus.Entry {
 	case envDev:
 		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
-			ForceColors: true,
+			DisableColors: true,
+			FullTimestamp: true, // Добавляем временные метки к сообщениям
 		})
-
 	case envProd:
 		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
-			ForceColors: true,
+			DisableColors: true,
+			FullTimestamp: true, // Добавляем временные метки к сообщениям
 		})
 		log.SetLevel(logrus.WarnLevel)
 	default:
 		log.SetOutput(logFile)
 		log.SetFormatter(&logrus.TextFormatter{
-			ForceColors: true,
+			DisableColors: true,
+			FullTimestamp: true, // Добавляем временные метки к сообщениям
 		})
 		log.SetLevel(logrus.DebugLevel)
 	}
