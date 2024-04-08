@@ -6,13 +6,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type AuthService interface {
 	Login(ctx context.Context, email, password string, appID int) (token string, err error)
 	RegisterNewUser(ctx context.Context, email, password string) (userID int64, err error)
 	IsAdmin(ctx context.Context, userID int64) (isAdmin bool, err error)
-	Logout(ctx context.Context, token string) error
+	Logout(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error)
 }
 
 type serverAPI struct {
@@ -52,11 +53,11 @@ func (s *serverAPI) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ss
 	return &ssov1.IsAdminResponse{IsAdmin: isAdmin}, nil
 }
 
-func (s *serverAPI) Logout(ctx context.Context, req *ssov1.LogoutRequest) (*ssov1.LogoutResponse, error) {
-	err := s.auth.Logout(ctx, req.GetToken())
+func (s *serverAPI) Logout(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
+	_, err := s.auth.Logout(ctx, empty)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "internal error")
+		return &emptypb.Empty{}, status.Error(codes.Internal, "internal error")
 	}
 
-	return &ssov1.LogoutResponse{}, nil
+	return &emptypb.Empty{}, nil
 }

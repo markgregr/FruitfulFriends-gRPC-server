@@ -10,6 +10,7 @@ import (
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/jwt"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"time"
 )
 
@@ -180,16 +181,20 @@ func (s *AuthService) AuthByToken(ctx context.Context, token string) (userID int
 }
 
 // Logout выполняет выход пользователя
-func (s *AuthService) Logout(ctx context.Context, token string) error {
+func (s *AuthService) Logout(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
 	const op = "auth.Auth.Logout"
+
+	//TODO: token :=
+	token := "sdfsdf"
+
 	log := s.log.WithField("op", op).WithField("token", token)
 
 	log.Info("logout")
 
 	if err := s.authUserSaver.DeleteAuthenticatedUser(ctx, token); err != nil {
 		log.WithError(err).Error("failed to delete authenticated user")
-		return fmt.Errorf("%s: %w", op, err)
+		return &emptypb.Empty{}, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return nil
+	return nil, nil
 }
