@@ -3,17 +3,15 @@ package gmiddleware
 import (
 	"context"
 	"errors"
+	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/lib/jwt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/services/auth"
+	"strconv"
 	"strings"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-)
-
-const (
-	apiTokenKey = "secret"
 )
 
 var (
@@ -41,9 +39,6 @@ func (s *Auth) AuthFunc(ctx context.Context) (context.Context, error) {
 	}
 
 	md := metautils.ExtractIncoming(ctx)
-	//if md.Get(apiTokenKey) != s.apiToken {
-	//	return ctx, status.Errorf(codes.Unauthenticated, "wrong api token")
-	//}
 
 	if strings.HasPrefix(method, "/auth.Auth/Register") ||
 		strings.HasPrefix(method, "/auth.Auth/Login") ||
@@ -51,20 +46,35 @@ func (s *Auth) AuthFunc(ctx context.Context) (context.Context, error) {
 		return ctx, nil
 	}
 
+	appID, err := strconv.Atoi(md.Get("app_id"))
+	if err != nil {
+		return ctx, status.Errorf(codes.Unauthenticated, "app id is invalid")
+	}
+
 	accessToken := md.Get("access_token")
 	if accessToken == "" {
 		return ctx, status.Errorf(codes.Unauthenticated, "access token is empty")
 	}
 
-	user, err := s.authService.AuthByToken(ctx, accessToken)
+	app, err := s.authService.AppByID(ctx, appID)
+	if err != nil {
+		return ctx, status.Errorf(codes.Unauthenticated, "app not find")
+	}
+
+	_, err = jwt.ParseAndValidateToken(accessToken, app.Secret)
+	if err != nil {
+		return ctx, status.Errorf(codes.Unauthenticated, "token parse failed")
+	}
+
+	userID, err := s.authService.Authentication(ctx, accessToken)
 	if errors.Is(err, ErrRecordNotFound) || err == ErrInvalidToken {
-		return ctx, status.Errorf(codes.Unauthenticated, "user not find")
+		return ctx, status.Errorf(codes.Unauthenticated, "invalid token")
 	}
 	if err != nil {
 		return ctx, err
 	}
 
-	ctx = context.WithValue(ctx, "user", user)
+	ctx = context.WithValue(ctx, "userID", userID)
 
 	return ctx, nil
 }

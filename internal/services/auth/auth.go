@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/grpc-ecosystem/go-grpc-middleware/util/metautils"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/adapters/db/postgresql"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/adapters/db/redis"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
@@ -160,7 +161,7 @@ func (s *AuthService) IsAdmin(ctx context.Context, userID int64) (isAdmin bool, 
 }
 
 // AuthByToken выполняет аутентификацию пользователя по токену
-func (s *AuthService) AuthByToken(ctx context.Context, token string) (userID int64, err error) {
+func (s *AuthService) Authentication(ctx context.Context, token string) (userID int64, err error) {
 	const op = "auth.Auth.AuthByToken"
 	log := s.log.WithField("op", op).WithField("token", token)
 
@@ -180,16 +181,36 @@ func (s *AuthService) AuthByToken(ctx context.Context, token string) (userID int
 	return userID, nil
 }
 
+// AppByID возвращает приложение по идентификатору
+func (s *AuthService) AppByID(ctx context.Context, appID int) (models.App, error) {
+	const op = "auth.Auth.AppByID"
+	log := s.log.WithField("op", op).WithField("app_id", appID)
+
+	log.Info("get app by id")
+
+	app, err := s.appProvider.App(ctx, appID)
+	if err != nil {
+		if errors.Is(err, postgresql.ErrAppNotFound) {
+			log.Warn("app not found", err)
+			return models.App{}, fmt.Errorf("%s: %w", op, ErrInvalidAppID)
+		}
+
+		log.WithError(err).Error("failed to get app")
+		return models.App{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return app, nil
+}
+
 // Logout выполняет выход пользователя
 func (s *AuthService) Logout(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
 	const op = "auth.Auth.Logout"
 
-	//TODO: token :=
-	token := "sdfsdf"
+	token := metautils.ExtractIncoming(ctx).Get("access_token")
 
 	log := s.log.WithField("op", op).WithField("token", token)
 
-	log.Info("logout")
+	log.Info("delete token from redis")
 
 	if err := s.authUserSaver.DeleteAuthenticatedUser(ctx, token); err != nil {
 		log.WithError(err).Error("failed to delete authenticated user")

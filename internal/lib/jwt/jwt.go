@@ -1,6 +1,8 @@
 package jwt
 
 import (
+	"errors"
+	"fmt"
 	"github.com/golang-jwt/jwt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
 	"time"
@@ -22,4 +24,24 @@ func NewToken(user models.User, app models.App, duration time.Duration) (string,
 	}
 
 	return tokenString, nil
+}
+
+// ParseAndValidateToken парсит и валидирует токен
+func ParseAndValidateToken(tokenString string, appSecret string) (*jwt.Token, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+
+		return []byte(appSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("token is invalid")
+	}
+
+	return token, nil
 }
