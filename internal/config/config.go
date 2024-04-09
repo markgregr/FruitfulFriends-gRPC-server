@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Env      string `env:"GRPC_SERVER_ENV" env-default:"local"`
+	LogsPath string `env:"GRPC_SERVER_LOGS_PATH_FILE" env-required:"true"`
 	GRPC     GRPCConfig
 	Postgres PostgresConfig
 	JWT      JWTConfig

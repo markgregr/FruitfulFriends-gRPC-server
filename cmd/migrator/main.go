@@ -41,7 +41,7 @@ func setupLogger(env string) *logrus.Entry {
 	var log = logrus.New()
 	// Создаем новый обработчик для записи в файл
 	fileHandler := &lumberjack.Logger{
-		Filename:   "logs/logger.log",
+		Filename:   "logs/logger_rest.log",
 		MaxSize:    10,   // Максимальный размер файла в мегабайтах
 		MaxBackups: 3,    // Максимальное количество ротированных файлов
 		MaxAge:     7,    // Максимальный возраст ротированных файлов в днях

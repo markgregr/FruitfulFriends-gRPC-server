@@ -53,6 +53,19 @@ func Migrate(log *logrus.Logger, db *gorm.DB) error {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
+	log.Info("models migrated")
+
+	app := models.App{
+		ID:     1,
+		Name:   "REST_API_SERVER",
+		Secret: "secret",
+	}
+
+	if err := db.Create(&app).Error; err != nil {
+		log.WithError(err).Error("failed to insert app data")
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
 	log.Info("user model migrated")
 
 	return nil

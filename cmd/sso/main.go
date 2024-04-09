@@ -20,7 +20,7 @@ const (
 func main() {
 	cfg := config.MustLoad()
 
-	log := setupLogger(cfg.Env)
+	log := setupLogger(cfg.Env, cfg.LogsPath)
 
 	log.WithField("config", cfg).Info("Application start!")
 
@@ -39,11 +39,10 @@ func main() {
 	log.Info("Application stopped!")
 }
 
-func setupLogger(env string) *logrus.Entry {
+func setupLogger(env string, logsPathFile string) *logrus.Entry {
 	var log = logrus.New()
-	logFilePath := "logs/logger.log"
 
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	logFile, err := os.OpenFile(logsPathFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
 	}
