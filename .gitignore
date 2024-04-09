@@ -5,4 +5,4 @@ logstash/pipeline/logstash.conf
 logstash/config/logstash.yml
 .env
 .vscode
-logs/logger.log
+logs/logger-grpc.log
