@@ -1,6 +1,7 @@
 package postgresql
 
 import (
+	"errors"
 	"fmt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/config"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
@@ -55,18 +56,34 @@ func Migrate(log *logrus.Logger, db *gorm.DB) error {
 
 	log.Info("models migrated")
 
-	app := models.App{
-		ID:     1,
-		Name:   "REST_API_SERVER",
-		Secret: "secret",
+	// Проверяем, существует ли запись приложения с заданным ID
+	var existingApp models.App
+	if err := db.First(&existingApp, "id = ?", 1).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Запись не найдена, поэтому создаем новую
+			app := models.App{
+				ID:     1,
+				Name:   "REST_API_SERVER",
+				Secret: "secret",
+			}
+
+			if err := db.Create(&app).Error; err != nil {
+				log.WithError(err).Error("failed to insert app data")
+				return fmt.Errorf("%s: %w", op, err)
+			}
+
+			log.Info("app data inserted")
+		} else {
+			// Произошла ошибка при выполнении запроса
+			log.WithError(err).Error("failed to query app data")
+			return fmt.Errorf("%s: %w", op, err)
+		}
+	} else {
+		// Запись уже существует
+		log.Info("app data already exists")
 	}
 
-	if err := db.Create(&app).Error; err != nil {
-		log.WithError(err).Error("failed to insert app data")
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	log.Info("user model migrated")
+	log.Info("migration completed successfully")
 
 	return nil
 }
