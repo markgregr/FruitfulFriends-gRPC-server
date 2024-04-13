@@ -35,11 +35,7 @@ func (p *Postgres) SaveUser(ctx context.Context, email string, passHash []byte) 
 	}
 
 	if err := p.db.WithContext(ctx).Create(user).Error; err != nil {
-		if errors.Is(err, gorm.ErrInvalidData) {
-			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
-		}
-
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
 		}
 
