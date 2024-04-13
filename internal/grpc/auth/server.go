@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/services/auth"
 	ssov1 "github.com/markgregr/FruitfulFriends-protos/gen/go/sso"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -28,7 +29,9 @@ func Register(gRPC *grpc.Server, auth AuthService) {
 func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
 	token, err := s.auth.Login(ctx, req.GetEmail(), req.GetPassword(), int(req.GetAppId()))
 	if err != nil {
-		//TODO:....
+		if err == auth.ErrInvalidCredentials {
+			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 
@@ -38,7 +41,9 @@ func (s *serverAPI) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.
 func (s *serverAPI) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
 	userID, err := s.auth.RegisterNewUser(ctx, req.GetEmail(), req.GetPassword())
 	if err != nil {
-		//TODO...
+		if err == auth.ErrUserExist {
+			return nil, status.Error(codes.AlreadyExists, "user already exists")
+		}
 		return nil, status.Error(codes.Internal, "internal error")
 	}
 	return &ssov1.RegisterResponse{UserId: userID}, nil
