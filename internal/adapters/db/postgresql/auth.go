@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/markgregr/FruitfulFriends-gRPC-server/internal/domain/models"
 	"gorm.io/gorm"
+	"strings"
 )
 
 var (
@@ -13,7 +14,9 @@ var (
 	ErrUserNotFound = errors.New("user not found")
 	ErrAppNotFound  = errors.New("app not found")
 )
-
+var (
+	ErrGormDuplicateUserEmail = "duplicate key value violates unique constraint"
+)
 var (
 	RoleUser  = 1
 	RoleAdmin = 2
@@ -34,8 +37,8 @@ func (p *Postgres) SaveUser(ctx context.Context, email string, passHash []byte) 
 		Status:   StatusActive,
 	}
 
-	if err := p.db.WithContext(ctx).Create(user).Error; err != nil {
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+	if err := p.db.Create(user).Error; err != nil {
+		if strings.Contains(err.Error(), ErrGormDuplicateUserEmail) {
 			return 0, fmt.Errorf("%s: %w", op, ErrUserExists)
 		}
 
